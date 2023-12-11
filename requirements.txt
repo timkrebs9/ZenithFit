@@ -1,0 +1,2 @@
+# Runtime requirements
+fastapi[all]>=0.63.0
