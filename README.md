@@ -1,3 +1,6 @@
+[![ci-test](https://github.com/timkrebs9/ZenithFit/actions/workflows/test.yml/badge.svg)](https://github.com/timkrebs9/ZenithFit/actions/workflows/test.yml)
+[![pre-commit](https://github.com/timkrebs9/ZenithFit/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/timkrebs9/ZenithFit/actions/workflows/pre-commit.yml)
+
 # ZenithFit
 
 ## Overview
