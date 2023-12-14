@@ -115,7 +115,7 @@ async def update_user(user_id: int, user: User) -> dict:
 
 
 # Delete Users (DELETE)
-@app.delete("/users/{user_id}", status_code=204)
+@app.delete("/users/{user_id}", status_code=200)
 async def delete_user(user_id: int) -> dict:
     index = find_index_users(user_id)
     if index is not None:
