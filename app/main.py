@@ -21,7 +21,7 @@
 # 6. Create an Endpoint to Delete Users
 
 import random
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -78,7 +78,7 @@ def find_user(user_id: int) -> dict | None:
 
 def find_index_users(user_id: int) -> int | None:
     for index, user in enumerate(my_users):
-        if user["id"] == user_id:
+        if str(user["id"]) == str(user_id):
             return index
     return None
 
@@ -89,16 +89,16 @@ async def create_user(user: User) -> dict:
     user_dict = user.dict()
     user_dict["id"] = random.randint(0, 100000)
     my_users.append(user_dict)
-    return {"data": user}
+    return {"data": user_dict}
 
 
 # Read Users (GET)
-@app.get("/users")
+@app.get("/users", status_code=200)
 async def get_user() -> dict:
     return {"data": my_users}
 
 
-@app.get("/users/{user_id}")
+@app.get("/users/{user_id}", status_code=200)
 async def get_user_by_id(user_id: int) -> dict:
     user = find_user(user_id)
     if not user:
@@ -109,15 +109,27 @@ async def get_user_by_id(user_id: int) -> dict:
 
 
 # Update Users (PUT, PATCH)
-@app.put("/users/{user_id}")
+@app.put("/users/{user_id}", status_code=200)
 async def update_user(user_id: int, user: User) -> dict:
-    return {"data": {user_id: user}}
+    index = find_index_users(user_id)
+    if index is None:
+        raise HTTPException(
+            status_code=404, detail=f"User not with id: {user_id} found"
+        )
+
+    user_dict = user.dict()
+    user_dict["id"] = user_id
+    my_users[index] = user_dict
+    return {"data": user_dict}
 
 
 # Delete Users (DELETE)
 @app.delete("/users/{user_id}", status_code=200)
 async def delete_user(user_id: int) -> dict:
     index = find_index_users(user_id)
-    if index is not None:
-        my_users.pop(index)
-    return {"message": f"User with id: {user_id} deleted successfully"}
+    if index is None:
+        raise HTTPException(
+            status_code=404, detail=f"User not with id: {user_id} found"
+        )
+    my_users.pop(index)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)  # type: ignore
