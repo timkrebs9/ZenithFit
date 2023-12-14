@@ -21,14 +21,14 @@
 # 6. Create an Endpoint to Delete Users
 
 import random
-from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
 
+
 class User(BaseModel):
-    id  : Optional[int]
+    user_id: int | None = None
     name: str
     age: int
     gender: str
@@ -37,54 +37,87 @@ class User(BaseModel):
 
 
 # temp array to store users
-my_users = [{
-    "id" : "1",
-	"name": "Tim Krebs",
-    "age" : 16,
-    "gender": "male",
-    "email" : "timkrebs9@gmail.com",
-    "password" : "123456789"}, 
+my_users = [
     {
-    "id" : "2",
-    "name": "John Doe",
-    "age": "38",
-    "gender": "male",
-    "email": "johndoe@gmail.com",
-    "password": "123456789"}
-    ]
+        "id": "1",
+        "name": "Tim Krebs",
+        "age": 16,
+        "gender": "male",
+        "email": "timkrebs9@gmail.com",
+        "password": "123456789",
+    },
+    {
+        "id": "2",
+        "name": "John Doe",
+        "age": "38",
+        "gender": "male",
+        "email": "johndoe@gmail.com",
+        "password": "123456789",
+    },
+]
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"message": "Hello World"}
 
+
+# Run with: uvicorn app.main:app --reload
 
 #######################
 # User Management #
 #######################
-#Create Users (POST)
-@app.post("/users")
-async def create_user(user: User):
+
+
+def find_user(user_id: int) -> dict | None:
+    for user in my_users:
+        if user["id"] == str(user_id):
+            return user
+    return None
+
+
+def find_index_users(user_id: int) -> int | None:
+    for index, user in enumerate(my_users):
+        if user["id"] == user_id:
+            return index
+    return None
+
+
+# Create Users (POST)
+@app.post("/users", status_code=201)
+async def create_user(user: User) -> dict:
     user_dict = user.dict()
-    user_dict["id"] = random.randint(0,100000)
+    user_dict["id"] = random.randint(0, 100000)
     my_users.append(user_dict)
     return {"data": user}
 
-#Read Users (GET)
-@app.get("/users/{id}")
-async def get_userbyID(id: int):
-    return {"data": my_users[id]}
 
+# Read Users (GET)
 @app.get("/users")
-async def get_user():
+async def get_user() -> dict:
     return {"data": my_users}
 
-#Update Users (PUT, PATCH)
-@app.put("/users/{id}")
-async def update_user(id: int, user: User):
-    return {"data": {id: user}}
 
-#Delete Users (DELETE)
-@app.delete("/users/{id}")
-async def delete_user(id: int):
-    return {"data": id}
+@app.get("/users/{user_id}")
+async def get_user_by_id(user_id: int) -> dict:
+    user = find_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=404, detail=f"User not with id: {user_id} found"
+        )
+    return {"data": user}
+
+
+# Update Users (PUT, PATCH)
+@app.put("/users/{user_id}")
+async def update_user(user_id: int, user: User) -> dict:
+    return {"data": {user_id: user}}
+
+
+# Delete Users (DELETE)
+@app.delete("/users/{user_id}", status_code=204)
+async def delete_user(user_id: int) -> dict:
+    index = find_index_users(user_id)
+    if index is not None:
+        my_users.pop(index)
+    return {"message": f"User with id: {user_id} deleted successfully"}
