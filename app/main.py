@@ -86,7 +86,7 @@ def find_index_users(user_id: int) -> int | None:
 # Create Users (POST)
 @app.post("/users", status_code=201)
 async def create_user(user: User) -> dict:
-    user_dict = user.dict()
+    user_dict = user.model_dump()
     user_dict["id"] = random.randint(0, 100000)
     my_users.append(user_dict)
     return {"data": user_dict}
@@ -117,7 +117,7 @@ async def update_user(user_id: int, user: User) -> dict:
             status_code=404, detail=f"User not with id: {user_id} found"
         )
 
-    user_dict = user.dict()
+    user_dict = user.model_dump()
     user_dict["id"] = user_id
     my_users[index] = user_dict
     return {"data": user_dict}
