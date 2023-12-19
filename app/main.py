@@ -1,26 +1,10 @@
-# Steps to accmoplish_
-# 1. Import FastAPI
-# 2. Create an app instance
-# 3. Create a route
-# 4. Run the server
-
-# Database Management
-# 1. Import SQLAlchemy
-# 2. Create a database instance
-# 3. Create a model class
-# 4. Create a schmea for the base user
-# 5. Create a schema for the user class
-# 6. Fetch the session to the main app
-
-# Create Rest Endpoints
-# 1. Create an Endpoint to Get Users
-# 2. Create an Endpoint to Get Users by ID
-# 3. Create an Endpoint to Create Users
-# 4. Create an Endpoint to Add Users
-# 5. Create an Endpoint to Update Users
-# 6. Create an Endpoint to Delete Users
-
-import random
+from ctypes import Union
+import time
+import os
+from dotenv import load_dotenv
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from psycopg2 import OperationalError, DatabaseError
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel
 
@@ -35,6 +19,35 @@ class User(BaseModel):
     email: str
     password: str
 
+
+# Laden der Umgebungsvariablen
+load_dotenv()
+
+# Datenbankverbindungsinformationen aus Umgebungsvariablen
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_PORT = os.getenv("DB_PORT")
+
+# Datenbankverbindung
+while True:
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            port=DB_PORT,
+            cursor_factory=RealDictCursor,
+        )
+        cursor = conn.cursor()
+        print("Connected to the database successfully")
+        break
+    except (OperationalError, DatabaseError) as db_error:
+        print("Database connection failed")
+        print("Error: ", db_error)
+        time.sleep(5)
 
 # temp array to store users
 my_users = [
@@ -69,38 +82,33 @@ async def root() -> dict[str, str]:
 #######################
 
 
-def find_user(user_id: int) -> dict | None:
-    for user in my_users:
-        if user["id"] == str(user_id):
-            return user
-    return None
-
-
-def find_index_users(user_id: int) -> int | None:
-    for index, user in enumerate(my_users):
-        if str(user["id"]) == str(user_id):
-            return index
-    return None
-
-
 # Create Users (POST)
 @app.post("/users", status_code=201)
 async def create_user(user: User) -> dict:
-    user_dict = user.model_dump()
-    user_dict["id"] = random.randint(0, 100000)
-    my_users.append(user_dict)
-    return {"data": user_dict}
+    cursor.execute(
+        """INSERT INTO users (name, age, gender, email, password)
+       VALUES (%s, %s, %s, %s, %s) RETURNING *""",
+        (user.name, user.age, user.gender, user.email, user.password),
+    )
+    new_user = cursor.fetchone()
+    conn.commit()
+    return {"data": new_user}
 
 
 # Read Users (GET)
 @app.get("/users", status_code=200)
 async def get_user() -> dict:
+    cursor.execute("SELECT * FROM users")
+    my_users = cursor.fetchall()
+
     return {"data": my_users}
 
 
 @app.get("/users/{user_id}", status_code=200)
 async def get_user_by_id(user_id: int) -> dict:
-    user = find_user(user_id)
+    cursor.execute("SELECT * FROM users WHERE id = %s", (str(user_id),))
+    user = cursor.fetchone()
+
     if not user:
         raise HTTPException(
             status_code=404, detail=f"User not with id: {user_id} found"
@@ -111,25 +119,39 @@ async def get_user_by_id(user_id: int) -> dict:
 # Update Users (PUT, PATCH)
 @app.put("/users/{user_id}", status_code=200)
 async def update_user(user_id: int, user: User) -> dict:
-    index = find_index_users(user_id)
-    if index is None:
+    cursor.execute(
+        """UPDATE users SET name=%s, age=%s, gender=%s, email=%s, password=%s
+        WHERE id=%s RETURNING * """,
+        (
+            user.name,
+            user.age,
+            user.gender,
+            user.email,
+            user.password,
+            str(user_id),
+        ),
+    )
+    updated_user = cursor.fetchone()
+    conn.commit()
+
+    if updated_user is None:
         raise HTTPException(
             status_code=404, detail=f"User not with id: {user_id} found"
         )
 
-    user_dict = user.model_dump()
-    user_dict["id"] = user_id
-    my_users[index] = user_dict
-    return {"data": user_dict}
+    return {"data": updated_user}
 
 
 # Delete Users (DELETE)
 @app.delete("/users/{user_id}", status_code=200)
-async def delete_user(user_id: int) -> dict:
-    index = find_index_users(user_id)
-    if index is None:
+async def delete_user(user_id: int) -> Response:
+    cursor.execute("""DELETE FROM users WHERE id = %s RETURNING *""", (str(user_id),))
+    deleted_user = cursor.fetchone()
+    conn.commit()
+
+    if deleted_user is None:
         raise HTTPException(
             status_code=404, detail=f"User not with id: {user_id} found"
         )
-    my_users.pop(index)
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)  # type: ignore
