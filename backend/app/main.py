@@ -13,6 +13,7 @@ from . import models
 app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
+
 class User(BaseModel):
     user_id: int | None = None
     name: str
@@ -20,7 +21,6 @@ class User(BaseModel):
     gender: str
     email: str
     password: str
-    
 
 
 # Laden der Umgebungsvariablen
