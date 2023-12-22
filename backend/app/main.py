@@ -5,22 +5,15 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2 import OperationalError, DatabaseError
 from fastapi import FastAPI, HTTPException, Response, status, Depends
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 from .database import engine, get_db
-from . import models
+from .schemas import UserBase
+from . import models, schemas
 
 app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
-
-class User(BaseModel):
-    user_id: int | None = None
-    name: str
-    age: int
-    gender: str
-    email: str
-    password: str
 
 
 # Laden der Umgebungsvariablen
@@ -83,11 +76,16 @@ async def root() -> dict[str, str]:
 #######################
 # User Management #
 #######################
+@app.get("/test", status_code=status.HTTP_200_OK, response_model=list[UserSchema])
+def test_user(db: Session = Depends(get_db)) -> list[UserSchema]:
+    db.query(models.Users).all()
+    
+    return{"data": "successfull"} # type: ignore
 
 
 # Create Users (POST)
 @app.post("/users", status_code=status.HTTP_201_CREATED)
-async def create_user(user: User, db: Session = Depends(get_db)) -> dict:
+async def create_user(user: schemas.UserBase, db: Session = Depends(get_db)) -> dict:
     cursor.execute(
         """INSERT INTO users (name, age, gender, email, password)
        VALUES (%s, %s, %s, %s, %s) RETURNING *""",
@@ -121,7 +119,7 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)) -> dict:
 
 # Update Users (PUT, PATCH)
 @app.put("/users/{user_id}", status_code=status.HTTP_200_OK)
-async def update_user(user_id: int, user: User, db: Session = Depends(get_db)) -> dict:
+async def update_user(user_id: int, user: schemas.UserBase, db: Session = Depends(get_db)) -> dict:
     cursor.execute(
         """UPDATE users SET name=%s, age=%s, gender=%s, email=%s, password=%s
         WHERE id=%s RETURNING * """,
