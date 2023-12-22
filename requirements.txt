@@ -2,3 +2,6 @@
 fastapi[all]>=0.63.0
 pre-commit>=3.5.0
 config
+sqlalchemy
+psycopg2
+pydantic

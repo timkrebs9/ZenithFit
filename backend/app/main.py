@@ -7,7 +7,7 @@ from psycopg2 import OperationalError, DatabaseError
 from fastapi import FastAPI, HTTPException, Response, status, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import engine, get_db
+from .database import engine, get_db
 from . import models
 
 app = FastAPI()
@@ -73,7 +73,7 @@ my_users = [
 ]
 
 
-@app.get("/")
+@app.get("/", status_code=status.HTTP_200_OK)
 async def root() -> dict[str, str]:
     return {"message": "Hello World"}
 
@@ -86,7 +86,7 @@ async def root() -> dict[str, str]:
 
 
 # Create Users (POST)
-@app.post("/users", status_code=201)
+@app.post("/users", status_code=status.HTTP_201_CREATED)
 async def create_user(user: User, db: Session = Depends(get_db)) -> dict:
     cursor.execute(
         """INSERT INTO users (name, age, gender, email, password)
@@ -99,7 +99,7 @@ async def create_user(user: User, db: Session = Depends(get_db)) -> dict:
 
 
 # Read Users (GET)
-@app.get("/users", status_code=200)
+@app.get("/users", status_code=status.HTTP_200_OK)
 async def get_user(db: Session = Depends(get_db)) -> dict:
     cursor.execute("SELECT * FROM users")
     my_users = cursor.fetchall()
@@ -107,7 +107,7 @@ async def get_user(db: Session = Depends(get_db)) -> dict:
     return {"data": my_users}
 
 
-@app.get("/users/{user_id}", status_code=200)
+@app.get("/users/{user_id}", status_code=status.HTTP_200_OK)
 async def get_user_by_id(user_id: int, db: Session = Depends(get_db)) -> dict:
     cursor.execute("SELECT * FROM users WHERE id = %s", (str(user_id),))
     user = cursor.fetchone()
@@ -120,7 +120,7 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 # Update Users (PUT, PATCH)
-@app.put("/users/{user_id}", status_code=200)
+@app.put("/users/{user_id}", status_code=status.HTTP_200_OK)
 async def update_user(user_id: int, user: User, db: Session = Depends(get_db)) -> dict:
     cursor.execute(
         """UPDATE users SET name=%s, age=%s, gender=%s, email=%s, password=%s
@@ -146,7 +146,7 @@ async def update_user(user_id: int, user: User, db: Session = Depends(get_db)) -
 
 
 # Delete Users (DELETE)
-@app.delete("/users/{user_id}", status_code=200)
+@app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(user_id: int, db: Session = Depends(get_db)) -> Response:
     cursor.execute("""DELETE FROM users WHERE id = %s RETURNING *""", (str(user_id),))
     deleted_user = cursor.fetchone()
