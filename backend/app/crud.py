@@ -1,10 +1,6 @@
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
 
-from . import models, schemas
-
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from . import models, schemas, utils
 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.user_id == user_id).first()
@@ -19,7 +15,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
 
 
 def create_user(db: Session, user: schemas.UserCreate)->dict:
-    hashed_pwd = pwd_context.hash(user.password)
+    hashed_pwd = utils.hash(user.password)
     user.password = hashed_pwd
     db_user = models.User(**user.dict())
     db.add(db_user)
